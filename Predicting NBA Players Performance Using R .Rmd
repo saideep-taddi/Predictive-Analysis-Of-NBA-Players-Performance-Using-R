@@ -1,0 +1,313 @@
+
+# 1.  Data Understanding and Exploratory Data Analysis (EDA)
+
+
+Initial Data Loading and Inspection:
+
+    Loaded the dataset into R for analysis.
+    Examined the first few rows to get an initial understanding of the data's structure and content.
+    Summary Statistics:
+    
+    Analyzed summary statistics for each column to understand the distribution and range of values.
+    Noted key aspects such as:
+    Age ranges from 19 to 42 years, indicating a wide range of player ages.
+    GP (Games Played) and W (Wins) vary significantly among players, suggesting differences in player participation and team performance.
+    PTS (Points) shows a broad range, highlighting the varying scoring contributions of players.
+    Field goal statistics (FGM, FGA, FG%) and three-point statistics (3PM, 3PA, 3P%) indicate players' shooting performance.
+    Free throw performance is captured by FTM, FTA, and FT%.
+    Rebound stats (OREB, DREB, REB) and AST (Assists) show players' contributions in other areas of the game.
+    Defensive actions are represented by STL (Steals), BLK (Blocks), and PF (Personal Fouls).
+    FP (Fantasy Points), DD2 (Double Doubles), and TD3 (Triple Doubles) offer insights into overall player performance and milestones.
+    The +/- column indicates the overall impact of a player during their time on the court.
+    Missing Values Check:
+    
+    Confirmed that there are no missing values in the dataset, ensuring a complete dataset for analysis.
+    Distribution Analysis:
+    
+    Employed histograms to visualize the distributions of key variables such as Age, PTS, and Min (Minutes Played), offering insights into the general trends and variances in these metrics.
+    Relationship Exploration:
+    
+    Utilized scatter plots to explore relationships between variables, such as PTS vs. Min and Age vs. PTS, to understand how different aspects of player performance and attributes correlate with each other.
+    Positional Analysis:
+    
+    Created boxplots to compare the distribution of PTS across different positions (POS), revealing positional variations in scoring contributions.
+
+
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+
+# Load the dataset
+group_football_data <- read.csv("2023_nba_player_stats.csv")
+
+# View the first few rows of the dataset
+head(group_football_data)
+
+# Summary of the data
+summary(group_football_data)
+
+
+
+
+```
+
+```{r}
+# Histogram for Age
+ggplot(group_football_data, aes(x = Age)) +
+  geom_histogram(bins = 30, fill = "blue", color = "black") +
+  labs(title = "Distribution of Age", x = "Age", y = "Count")
+
+# Histogram for Points (PTS)
+ggplot(group_football_data, aes(x = PTS)) +
+  geom_histogram(bins = 30, fill = "red", color = "black") +
+  labs(title = "Distribution of Points (PTS)", x = "Points", y = "Count")
+
+# Histogram for Minutes Played (Min)
+ggplot(group_football_data, aes(x = Min)) +
+  geom_histogram(bins = 30, fill = "green", color = "black") +
+  labs(title = "Distribution of Minutes Played", x = "Minutes", y = "Count")
+
+```
+```{r}
+# Scatter plot for PTS vs. Min
+ggplot(group_football_data, aes(x = Min, y = PTS)) +
+  geom_point(color = "blue") +
+  labs(title = "Scatter Plot of Points vs. Minutes Played", x = "Minutes Played", y = "Points")
+
+# Scatter plot for Age vs. PTS
+ggplot(group_football_data, aes(x = Age, y = PTS)) +
+  geom_point(color = "red") +
+  labs(title = "Scatter Plot of Age vs. Points", x = "Age", y = "Points")
+
+```
+```{r}
+# Boxplot for Points by Position
+ggplot(group_football_data, aes(x = POS, y = PTS, fill = POS)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Points by Position", x = "Position", y = "Points")
+
+```
+
+# 2. Data Processing and Splitting
+
+
+Missing Values Assessment:
+
+Conducted an initial check for missing values across the dataset.
+Identified that some entries had missing values in the 'POS' (Position) column.
+Handling Missing Data:
+
+Decided to remove rows with missing 'POS' values, ensuring the dataset is complete for all analyzed variables.
+This step is crucial to maintain the integrity of subsequent analyses, as missing data could skew results or impair model performance.
+Data Normalization:
+
+Implemented Min-Max scaling to normalize numerical columns.
+This scaling technique transforms the data into a common range, typically 0 to 1, enhancing model performance by treating all features equally, especially important for models sensitive to the scale of data like Neural Networks.
+Feature Selection:
+
+Excluded the 'PName' column from the dataset.
+Since 'PName' represents player names and acts as an identifier rather than a predictive feature, its removal helps focus the analysis on variables that contribute to player performance metrics.
+Dataset Splitting:
+
+Split the processed data into training and testing sets.
+Used a 80-20 split ratio, ensuring a substantial amount of data for model training while retaining enough data to evaluate model performance.
+Applied set.seed(5555) to ensure reproducibility of results, meaning the same random subset of data will be selected for training and testing if the code is rerun.
+This section of the report highlights the critical steps taken in preparing the data for modeling. By handling missing values, normalizing data, and thoughtfully splitting the dataset, we establish a solid foundation for building reliable and robust predictive models.
+
+
+
+```{r}
+
+# Check for missing values
+sum(is.na(group_football_data))
+
+# Handling missing values - removing rows with NA in 'POS'
+group_football_data <- na.omit(group_football_data)
+
+# Normalizing data - Example using Min-Max Scaling
+normalize <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+# Normalize numerical columns
+numerical_cols <- sapply(group_football_data, is.numeric)
+group_football_data[numerical_cols] <- lapply(group_football_data[numerical_cols], normalize)
+# Exclude the 'PName' column
+group_football_data <- group_football_data[ , !(names(group_football_data) %in% c('PName'))]
+
+# Splitting data into training and testing sets
+set.seed(5555)
+training_indices <- sample(1:nrow(group_football_data), 0.8 * nrow(group_football_data))
+pitch_training_set <- group_football_data[training_indices, ]
+pitch_test_set <- group_football_data[-training_indices, ]
+
+```
+
+
+# 3. Modelling
+
+
+Library Preparation:
+
+Loaded essential R libraries for various modeling techniques: caret for general modeling functions, nnet for Artificial Neural Networks (ANN), glmnet for Lasso and Ridge regression, and randomForest for Random Forest models.
+This step ensures access to a broad range of functions and algorithms for model development and evaluation.
+Modeling Strategy:
+
+Established a modeling strategy focused on exploring different types of algorithms to understand which performs best for predicting player points (PTS).
+The diverse approach in algorithm selection aims to capture different aspects and complexities within the data.
+ANN Model (Goalie):
+
+Developed an ANN model named "Goalie."
+Chosen for its ability to learn non-linear relationships and complex patterns in the data.
+Configured with cross-validation (10-fold) to ensure robustness and generalizability.
+Upon training completion, printed a summary to review the model's structure and key parameters.
+Lasso Regression (Midfielder):
+
+Trained a Lasso regression model referred to as "Midfielder."
+Selected for its proficiency in feature selection and preventing model overfitting through regularization.
+Utilized cross-validation for tuning and enhancing model reliability.
+Summarized the model post-training to inspect coefficients and model specifics.
+Random Forest (Striker):
+
+Implemented a Random Forest model, named "Striker."
+This ensemble learning method is known for handling a mix of data types and capturing complex interactions between variables.
+Random Forest models are also beneficial for their inherent feature importance measures.
+Reviewed the model's summary to evaluate its construction and feature importance.
+
+
+
+```{r}
+# Load necessary libraries for modeling
+library(caret)
+library(nnet)  # For ANN
+library(glmnet)  # For Lasso and Ridge
+library(randomForest)  # For Random Forest
+
+# Define the formula
+scoring_formula <- PTS ~ .
+
+# Train different models - example with ANN, Lasso, and Random Forest
+# ANN model (Goalie)
+model_goalie <- train(scoring_formula, data=pitch_training_set, method="nnet", trControl=trainControl(method="cv", number=10))
+
+print(summary(model_goalie))
+
+
+# Lasso regression (Midfielder)
+model_midfielder <- train(scoring_formula, data=pitch_training_set, method="glmnet", trControl=trainControl(method="cv", number=10))
+
+print(summary(model_midfielder))
+
+
+
+# Random Forest (Striker)
+model_striker <- randomForest(scoring_formula, data=pitch_training_set)
+
+print(summary(model_striker))
+
+```
+# 4. Model Validation
+
+Test Set Predictions:
+
+Conducted predictions on the test set (pitch_test_set) using all three models: Goalie (ANN), Midfielder (Lasso Regression), and Striker (Random Forest).
+This process evaluates how well each model generalizes to new, unseen data, which is critical for assessing their real-world applicability.
+Performance Metric - RMSE:
+
+Calculated the Root Mean Squared Error (RMSE) for each model to quantify their prediction accuracy.
+RMSE provides a clear measure of the models' prediction errors, with lower values indicating better performance.
+
+```{r}
+# Predicting and evaluating the models on the test set
+predictions_goalie <- predict(model_goalie, newdata=pitch_test_set)
+predictions_midfielder <- predict(model_midfielder, newdata=pitch_test_set)
+predictions_striker <- predict(model_striker, newdata=pitch_test_set)
+
+# Calculating RMSE
+score_goalie <- sqrt(mean((predictions_goalie - pitch_test_set$PTS)^2))
+score_midfielder <- sqrt(mean((predictions_midfielder - pitch_test_set$PTS)^2))
+score_striker <- sqrt(mean((predictions_striker - pitch_test_set$PTS)^2))
+```
+
+
+# 5. Performance Reporting
+
+Reporting RMSE Values:
+
+  Reported RMSE values for each model:
+  RMSE Goalie (ANN): 0.0333
+  RMSE Midfielder (Lasso Regression): 0.0055
+  RMSE Striker (Random Forest): 0.0138
+  The RMSE values reveal the Midfielder (Lasso Regression) model as the most accurate, followed by the Striker (Random Forest) and the Goalie (ANN).
+
+
+Residual Analysis:
+
+  Visualized residuals for each model using scatter plots.
+  These plots compare predicted points against the residuals (differences between predicted and actual points).
+  Residual plots are crucial for identifying patterns in prediction errors, indicating model strengths and areas for improvement.
+
+
+
+```{r}
+# Print RMSE values
+print(paste("RMSE Goalie:", score_goalie))
+print(paste("RMSE Midfielder:", score_midfielder))
+print(paste("RMSE Striker:", score_striker))
+
+```
+
+
+```{r}
+# Residual plot for ANN model (Goalie)
+ggplot() +
+  geom_point(aes(x = predictions_goalie, y = predictions_goalie - pitch_test_set$PTS), 
+             colour = "blue") +
+  labs(title = "Residual Plot for ANN Model (Goalie)",
+       x = "Predicted Points",
+       y = "Residuals")
+
+# Residual plot for Lasso model (Midfielder)
+ggplot() +
+  geom_point(aes(x = predictions_midfielder, y = predictions_midfielder - pitch_test_set$PTS), 
+             colour = "red") +
+  labs(title = "Residual Plot for Lasso Model (Midfielder)",
+       x = "Predicted Points",
+       y = "Residuals")
+
+# Residual plot for Random Forest model (Striker)
+ggplot() +
+  geom_point(aes(x = predictions_striker, y = predictions_striker - pitch_test_set$PTS), 
+             colour = "green") +
+  labs(title = "Residual Plot for Random Forest Model (Striker)",
+       x = "Predicted Points",
+       y = "Residuals")
+
+```
+
+# 6. Conclusion
+
+Summary of Findings:
+
+  The project successfully implemented and compared three different predictive models: ANN, Lasso Regression, and Random Forest.
+  The Midfielder (Lasso Regression) model demonstrated the highest accuracy in predicting player points (PTS), as indicated by its lowest RMSE value.
+  
+  
+Model Evaluation:
+
+  All models showed varying degrees of prediction accuracy, with each having unique strengths. The Lasso Regression model (Midfielder) was particularly effective, likely due to its ability to handle multicollinearity and select relevant features.
+  The Random Forest model (Striker) also performed well, benefiting from its ensemble approach and ability to capture non-linear relationships.
+  
+  
+Future Recommendations:
+
+  Further exploration of hyperparameter tuning and feature engineering could potentially enhance model performances.
+  Additional models, such as Gradient Boosting or Support Vector Machines, could be explored to compare and potentially improve results.
+  Investigating interactions and more complex relationships within the data might reveal additional insights and improve predictions.
+
+
+Final Thoughts:
+
+  The project underscores the importance of a thorough approach to data preparation, model selection, and evaluation in predictive modeling.
+  The insights gained from this analysis could be invaluable for strategic decision-making in contexts where understanding player performance is crucial.
